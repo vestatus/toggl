@@ -9,8 +9,8 @@ import (
 	"os/signal"
 	"syscall"
 	"time"
+	"toggl/internal/db"
 	"toggl/internal/email"
-	"toggl/internal/queue"
 	"toggl/internal/server"
 	"toggl/internal/service"
 	"toggl/internal/takers"
@@ -69,10 +69,13 @@ func main() {
 		log.Fatal(err)
 	}
 
+	DB := db.NewInmem()
+
 	svc := &service.Service{
 		TakerAPI:     client,
 		EmailService: &email.LogSender{},
-		TakerQueue:   queue.NewInmem(),
+		TakerQueue:   DB,
+		SentThanks:   DB,
 	}
 
 	srv := server.Server{

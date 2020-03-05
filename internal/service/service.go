@@ -20,10 +20,22 @@ type TakerQueue interface {
 	Pop() (*Taker, error)
 }
 
+type IDSet interface {
+	Add(id int) error
+	Contains(id int) (bool, error)
+}
+
 type Service struct {
 	TakerAPI     TakerAPI
 	EmailService EmailSender
 	TakerQueue   TakerQueue
+	SentThanks   IDSet
+}
+
+func shouldSendThanks(taker *Taker) bool {
+	const minPercent = 80
+
+	return !taker.Demo && taker.Percent >= minPercent
 }
 
 func (s *Service) LoadTakers(ctx context.Context) error {
@@ -35,9 +47,27 @@ func (s *Service) LoadTakers(ctx context.Context) error {
 	}
 
 	for i := range takers {
+		if !shouldSendThanks(&takers[i]) {
+			continue
+		}
+
+		msgSent, err := s.SentThanks.Contains(takers[i].ID)
+		if err != nil {
+			return errors.Wrap(err, "failed to check for id in set")
+		}
+
+		if msgSent {
+			continue
+		}
+
 		err = s.TakerQueue.Push(&takers[i])
 		if err != nil {
 			return errors.Wrap(err, "failed to push taker to the queue")
+		}
+
+		err = s.SentThanks.Add(takers[i].ID)
+		if err != nil {
+			return errors.Wrap(err, "failed to add taker to the queue")
 		}
 	}
 
