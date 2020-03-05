@@ -15,6 +15,8 @@ import (
 	"toggl/internal/service"
 	"toggl/internal/takers"
 
+	"github.com/go-redis/redis"
+
 	"golang.org/x/sync/errgroup"
 
 	"github.com/kelseyhightower/envconfig"
@@ -24,6 +26,7 @@ type Config struct {
 	Email     string `envconfig:"EMAIL"`
 	Password  string `envconfig:"PASSWORD"`
 	TakersAPI string `envconfig:"TAKERS_API"`
+	RedisAddr string `envconfig:"REDIS_ADDR"`
 }
 
 const maxGracePeriod = 6 * time.Second
@@ -69,7 +72,11 @@ func main() {
 		log.Fatal(err)
 	}
 
-	DB := db.NewInmem()
+	redisClient := redis.NewClient(&redis.Options{
+		Network: "tcp",
+		Addr:    config.RedisAddr,
+	})
+	DB := db.NewRedis(redisClient)
 
 	svc := &service.Service{
 		TakerAPI:     client,
