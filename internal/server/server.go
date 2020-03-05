@@ -46,7 +46,6 @@ func (s *Server) loadTakers(ctx context.Context) error {
 }
 
 func (s *Server) sendThanks(ctx context.Context) error {
-	const sendThanksTimeout = 3 * time.Second
 	log := logger.FromContext(ctx)
 
 	for {
@@ -54,7 +53,7 @@ func (s *Server) sendThanks(ctx context.Context) error {
 		case <-ctx.Done():
 			return ctx.Err()
 		default:
-			timeoutCtx, _ := context.WithTimeout(ctx, sendThanksTimeout)
+			timeoutCtx, _ := context.WithTimeout(ctx, s.SendThanksTimeout)
 
 			ok, err := s.service.SendNextThanks(timeoutCtx)
 			if service.IsFatal(err) {
