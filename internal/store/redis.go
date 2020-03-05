@@ -28,13 +28,21 @@ func (r *Redis) Push(ctx context.Context, taker *service.Taker) error {
 		return errors.Wrap(err, "failed to marshal taker")
 	}
 
-	return r.client.WithContext(ctx).RPush(queueName, string(bts)).Err()
+	err = r.client.WithContext(ctx).RPush(queueName, string(bts)).Err()
+	if err != nil {
+		return service.Fatal(err)
+	}
+
+	return nil
 }
 
 func (r *Redis) Pop(ctx context.Context) (*service.Taker, error) {
 	res, err := r.client.WithContext(ctx).LPop(queueName).Result()
 	if err == redis.Nil {
 		return nil, service.ErrNoTakers
+	}
+	if err != nil {
+		return nil, service.Fatal(err)
 	}
 
 	var taker service.Taker
@@ -63,5 +71,10 @@ func (r *Redis) Add(ctx context.Context, id int) error {
 }
 
 func (r *Redis) Contains(ctx context.Context, id int) (bool, error) {
-	return r.client.WithContext(ctx).SIsMember(setName, id).Result()
+	res, err := r.client.WithContext(ctx).SIsMember(setName, id).Result()
+	if err != nil {
+		return false, service.Fatal(err)
+	}
+
+	return res, nil
 }
