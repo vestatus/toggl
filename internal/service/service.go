@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"log"
 
 	"github.com/pkg/errors"
 )
@@ -26,6 +27,8 @@ type Service struct {
 }
 
 func (s *Service) LoadTakers(ctx context.Context) error {
+	log.Print("loading new takers")
+
 	takers, err := s.TakerAPI.ListTakers(ctx)
 	if err != nil {
 		return errors.Wrap(err, "failed to list takers")
