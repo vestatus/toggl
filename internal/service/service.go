@@ -53,7 +53,7 @@ func (s *Service) LoadTakers(ctx context.Context) error {
 
 		msgSent, err := s.SentThanks.Contains(takers[i].ID)
 		if err != nil {
-			return errors.Wrap(err, "failed to check for id in set")
+			return Fatal(errors.Wrap(err, "failed to check for id in set"))
 		}
 
 		if msgSent {
@@ -62,12 +62,12 @@ func (s *Service) LoadTakers(ctx context.Context) error {
 
 		err = s.TakerQueue.Push(&takers[i])
 		if err != nil {
-			return errors.Wrap(err, "failed to push taker to the queue")
+			return Fatal(errors.Wrap(err, "failed to push taker to the queue"))
 		}
 
 		err = s.SentThanks.Add(takers[i].ID)
 		if err != nil {
-			return errors.Wrap(err, "failed to add taker to the queue")
+			return Fatal(errors.Wrap(err, "failed to add taker to the queue"))
 		}
 	}
 
@@ -80,7 +80,7 @@ func (s *Service) SendNextThanks(_ context.Context) (ok bool, e error) {
 		return false, nil
 	}
 	if err != nil {
-		return false, errors.Wrap(err, "failed to pop taker")
+		return false, Fatal(errors.Wrap(err, "failed to pop taker"))
 	}
 
 	err = s.EmailService.SendEmail(EmailAddress{
@@ -94,7 +94,7 @@ func (s *Service) SendNextThanks(_ context.Context) (ok bool, e error) {
 		Body:    "Thank you for applying via Toggl Hire.",
 	})
 	if err != nil {
-		return false, errors.Wrap(err, "failed to send email")
+		return false, Fatal(errors.Wrap(err, "failed to send email"))
 	}
 
 	return true, nil

@@ -27,6 +27,9 @@ func (s *Server) loadTakers(ctx context.Context) error {
 			return ctx.Err()
 		case <-ticker.C:
 			err := s.Service.LoadTakers(ctx)
+			if service.IsFatal(err) {
+				return err
+			}
 			if err != nil {
 				log.Printf("failed to load takers: %s", err)
 			}
@@ -41,6 +44,9 @@ func (s *Server) sendThanks(ctx context.Context) error {
 			return ctx.Err()
 		default:
 			ok, err := s.Service.SendNextThanks(ctx)
+			if service.IsFatal(err) {
+				return err
+			}
 			if err != nil {
 				log.Printf("failed to send thanks: %s", err)
 				continue
