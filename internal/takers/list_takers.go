@@ -75,12 +75,12 @@ func (c *Client) nextTakers(ctx context.Context, offset, limit int) (takers []ta
 
 func (t *taker) toDomain() service.Taker {
 	return service.Taker{
-		ID:      t.ID,
-		Name:    t.Name,
-		Email:   t.ContactInfo.ContactEmail,
-		Points:  t.Points,
-		Percent: t.Percent,
-		Demo:    t.IsDemo,
+		ID:           t.ID,
+		Name:         t.Name,
+		ContactEmail: t.ContactInfo.ContactEmail,
+		Points:       t.Points,
+		Percent:      t.Percent,
+		Demo:         t.IsDemo,
 	}
 }
 

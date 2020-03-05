@@ -4,7 +4,9 @@ import (
 	"context"
 	"log"
 	"net/http"
-	"time"
+	"toggl/internal/email"
+	"toggl/internal/queue"
+	"toggl/internal/service"
 	"toggl/internal/takers"
 
 	"github.com/kelseyhightower/envconfig"
@@ -29,20 +31,19 @@ func main() {
 		log.Fatal(err)
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
+	svc := &service.Service{
+		TakerAPI:     client,
+		EmailService: &email.LogSender{},
+		TakerQueue:   queue.NewInmem(),
+	}
 
-	err = client.Authenticate(ctx)
+	err = svc.LoadTakers(context.TODO())
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	takers, err := client.ListTakers(ctx)
+	_, err = svc.SendNextThanks(context.TODO())
 	if err != nil {
 		log.Fatal(err)
-	}
-
-	for _, taker := range takers {
-		log.Printf("%#v\n", taker)
 	}
 }
