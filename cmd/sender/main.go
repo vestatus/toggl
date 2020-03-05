@@ -24,18 +24,25 @@ func main() {
 		log.Fatal(err)
 	}
 
-	client, err := takers.NewClient(&http.Client{}, config.TakersAPI)
+	client, err := takers.NewClient(&http.Client{}, config.TakersAPI, config.Email, config.Password)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	token, err := client.Authenticate(ctx, config.Email, config.Password)
+	err = client.Authenticate(ctx)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	log.Print(token)
+	takers, err := client.ListTakers(ctx)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	for _, taker := range takers {
+		log.Printf("%#v\n", taker)
+	}
 }

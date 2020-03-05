@@ -1,28 +1,44 @@
 package takers
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
+	"fmt"
 	"io"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"net/url"
 	"path"
+	"sync"
 
 	"github.com/pkg/errors"
 )
 
 const (
-	pathAuth = "/auth/authenticate"
+	pathAuth   = "/auth/authenticate"
+	pathTakers = "/test-takers"
 )
 
 type Client struct {
 	baseClient *http.Client
 	baseURL    *url.URL
+
+	token   string
+	tokenMu *sync.RWMutex
+
+	email, password string
 }
 
-func NewClient(baseClient *http.Client, baseURLString string) (*Client, error) {
+type CodeError struct {
+	StatusCode int
+	Body       []byte
+}
+
+func (c CodeError) Error() string {
+	return fmt.Sprintf("API returned code %v", c.StatusCode)
+}
+
+func NewClient(baseClient *http.Client, baseURLString string, email, password string) (*Client, error) {
 	if baseClient == nil {
 		baseClient = &http.Client{}
 	}
@@ -32,20 +48,41 @@ func NewClient(baseClient *http.Client, baseURLString string) (*Client, error) {
 		return nil, errors.Wrap(err, "failed to parse base URL")
 	}
 
-	return &Client{
+	client := &Client{
 		baseClient: baseClient,
 		baseURL:    baseURL,
-	}, nil
+		tokenMu:    &sync.RWMutex{},
+		email:      email,
+		password:   password,
+	}
+
+	return client, nil
 }
 
-func (c *Client) doRequest(ctx context.Context, method string, pth string, body io.Reader) (io.ReadCloser, error) {
+func (c *Client) signRequest(req *http.Request) {
+	c.tokenMu.RLock()
+	defer c.tokenMu.RUnlock()
+
+	if c.token == "" {
+		return
+	}
+
+	req.Header.Set("Authorization", "Bearer "+c.token)
+}
+
+func (c *Client) doRequest(ctx context.Context, method string, pth string, query url.Values, body io.Reader) (io.ReadCloser, error) {
 	endpoint := *c.baseURL
 	endpoint.Path = path.Join(endpoint.Path, pth)
+	endpoint.RawQuery = query.Encode()
 
 	req, err := http.NewRequestWithContext(ctx, method, endpoint.String(), body)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create request")
 	}
+
+	c.signRequest(req)
+
+	log.Printf("%s %s %s", method, pth, query.Encode())
 
 	resp, err := c.baseClient.Do(req)
 	if err != nil {
@@ -53,48 +90,18 @@ func (c *Client) doRequest(ctx context.Context, method string, pth string, body 
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		io.Copy(ioutil.Discard, resp.Body)
+		bts, _ := ioutil.ReadAll(resp.Body)
 		resp.Body.Close()
 
-		return nil, errors.Errorf("API responded with code %v", resp.StatusCode)
+		return nil, CodeError{
+			StatusCode: resp.StatusCode,
+			Body:       bts,
+		}
 	}
 
 	return resp.Body, nil
 }
 
-func (c *Client) Authenticate(ctx context.Context, email, password string) (token string, e error) {
-	type request struct {
-		Email    string `json:"email"`
-		Password string `json:"password"`
-	}
-
-	body, err := json.Marshal(request{
-		Email:    email,
-		Password: password,
-	})
-	if err != nil {
-		return "", errors.Wrap(err, "failed to marshal body")
-	}
-
-	respBody, err := c.doRequest(ctx, http.MethodPost, pathAuth, bytes.NewBuffer(body))
-	if err != nil {
-		return "", errors.WithMessage(err, "failed to do request")
-	}
-	defer func() {
-		io.Copy(ioutil.Discard, respBody)
-		respBody.Close()
-	}()
-
-	type response struct {
-		Token string `json:"access_token"`
-	}
-
-	var resp response
-
-	err = json.NewDecoder(respBody).Decode(&resp)
-	if err != nil {
-		return "", errors.Wrap(err, "failed to decode response")
-	}
-
-	return resp.Token, nil
+func (c *Client) get(ctx context.Context, path string, query url.Values) (io.ReadCloser, error) {
+	return c.doRequest(ctx, http.MethodGet, path, query, nil)
 }
