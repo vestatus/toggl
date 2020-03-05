@@ -48,13 +48,17 @@ func shouldSendThanks(taker *Taker) bool {
 	return !taker.Demo && taker.Percent >= minPercent
 }
 
-func (s *Service) LoadTakers(ctx context.Context) error {
-	logger.FromContext(ctx).Info("loading new takers")
+func (s *Service) LoadTakers(ctx context.Context) (e error) {
+	log := logger.FromContext(ctx)
+	log.Debug("loading new takers")
 
 	takers, err := s.takerAPI.ListTakers(ctx)
 	if err != nil {
 		return errors.Wrap(err, "failed to list takers")
 	}
+
+	loadedTakersCounter := 0
+	defer func() { log.Debugf("loaded %v takers", loadedTakersCounter) }()
 
 	for i := range takers {
 		if !shouldSendThanks(&takers[i]) {
@@ -79,6 +83,8 @@ func (s *Service) LoadTakers(ctx context.Context) error {
 		if err != nil {
 			return Fatal(errors.Wrap(err, "failed to add taker to the queue"))
 		}
+
+		loadedTakersCounter++
 	}
 
 	return nil

@@ -89,13 +89,19 @@ func main() {
 		log.Fatal(err)
 	}
 
+	log.Infof("config: %#v", config)
+
 	level, err := logrus.ParseLevel(config.LogLevel)
 	if err != nil {
 		log.WithError(err).
 			WithField("default level", defaultLogLevel).
 			Error("failed to parse log level, using default")
 	} else {
-		log.Level = level
+		log = logrus.NewEntry(&logrus.Logger{
+			Out:       os.Stdout,
+			Formatter: &logrus.TextFormatter{},
+			Level:     level,
+		})
 	}
 
 	client, err := takers.NewClient(&http.Client{}, config.TakersAPI, config.Email, config.Password)
