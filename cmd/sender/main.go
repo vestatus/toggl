@@ -11,6 +11,8 @@ import (
 	"toggl/internal/store"
 	"toggl/internal/takers"
 
+	"github.com/pkg/errors"
+
 	"github.com/sirupsen/logrus"
 
 	"github.com/go-redis/redis"
@@ -47,25 +49,34 @@ func main() {
 		})
 	}
 
+	ctx := logger.WithLogger(context.Background(), log)
+
+	err = run(ctx, config)
+	if err != nil {
+		log.WithError(err).Fatal("service terminated with error")
+	}
+}
+
+func run(ctx context.Context, config *Config) error {
+	log := logger.FromContext(ctx)
+
 	client, err := takers.NewClient(&http.Client{}, config.TakersAPI, config.Email, config.Password)
 	if err != nil {
-		log.Fatal(err)
+		return errors.Wrap(err, "failed to create takers API client")
 	}
 
 	redisClient := redis.NewClient(&redis.Options{
 		Network: "tcp",
 		Addr:    config.RedisAddr,
 	})
-	if redisClient.Ping().Err() != nil {
-		log.Fatal("redis unavailable")
+	if err := redisClient.Ping().Err(); err != nil {
+		return errors.Wrap(err, "failed to ping redis")
 	}
 
 	DB := store.NewRedis(redisClient)
 	svc := service.New(client, &email.LogSender{Log: log}, DB, DB)
 
 	srv := server.New(config.Server, svc)
-
-	ctx := logger.WithLogger(context.Background(), log)
 
 	log.Info("starting service")
 
@@ -78,8 +89,8 @@ func main() {
 	err = eg.Wait()
 	if sig, ok := err.(errSignal); ok {
 		log.WithField("signal", sig.Signal).Info("service terminated normally due to signal")
-		return
+		return nil
 	}
 
-	log.WithError(err).Error("service terminated with error")
+	return err
 }

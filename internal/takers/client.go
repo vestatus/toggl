@@ -72,7 +72,8 @@ func (c *Client) signRequest(req *http.Request) {
 	req.Header.Set("Authorization", "Bearer "+c.token)
 }
 
-func (c *Client) doRequest(ctx context.Context, method string, pth string, query url.Values, body io.Reader) (io.ReadCloser, error) {
+func (c *Client) doRequest(ctx context.Context, method string,
+	pth string, query url.Values, body io.Reader) (io.ReadCloser, error) {
 	endpoint := *c.baseURL
 	endpoint.Path = path.Join(endpoint.Path, pth)
 	endpoint.RawQuery = query.Encode()
