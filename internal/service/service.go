@@ -26,10 +26,20 @@ type IDSet interface {
 }
 
 type Service struct {
-	TakerAPI     TakerAPI
-	EmailService EmailSender
-	TakerQueue   TakerQueue
-	SentThanks   IDSet
+	takerAPI     TakerAPI
+	emailService EmailSender
+
+	takerQueue TakerQueue
+	sentThanks IDSet
+}
+
+func New(takerAPI TakerAPI, emailService EmailSender, takerQueue TakerQueue, sentThanks IDSet) *Service {
+	return &Service{
+		takerAPI:     takerAPI,
+		emailService: emailService,
+		takerQueue:   takerQueue,
+		sentThanks:   sentThanks,
+	}
 }
 
 func shouldSendThanks(taker *Taker) bool {
@@ -41,7 +51,7 @@ func shouldSendThanks(taker *Taker) bool {
 func (s *Service) LoadTakers(ctx context.Context) error {
 	logger.FromContext(ctx).Info("loading new takers")
 
-	takers, err := s.TakerAPI.ListTakers(ctx)
+	takers, err := s.takerAPI.ListTakers(ctx)
 	if err != nil {
 		return errors.Wrap(err, "failed to list takers")
 	}
@@ -51,7 +61,7 @@ func (s *Service) LoadTakers(ctx context.Context) error {
 			continue
 		}
 
-		msgSent, err := s.SentThanks.Contains(ctx, takers[i].ID)
+		msgSent, err := s.sentThanks.Contains(ctx, takers[i].ID)
 		if err != nil {
 			return Fatal(errors.Wrap(err, "failed to check for id in set"))
 		}
@@ -60,12 +70,12 @@ func (s *Service) LoadTakers(ctx context.Context) error {
 			continue
 		}
 
-		err = s.TakerQueue.Push(ctx, &takers[i])
+		err = s.takerQueue.Push(ctx, &takers[i])
 		if err != nil {
 			return Fatal(errors.Wrap(err, "failed to push taker to the queue"))
 		}
 
-		err = s.SentThanks.Add(ctx, takers[i].ID)
+		err = s.sentThanks.Add(ctx, takers[i].ID)
 		if err != nil {
 			return Fatal(errors.Wrap(err, "failed to add taker to the queue"))
 		}
@@ -75,7 +85,7 @@ func (s *Service) LoadTakers(ctx context.Context) error {
 }
 
 func (s *Service) SendNextThanks(ctx context.Context) (ok bool, e error) {
-	taker, err := s.TakerQueue.Pop(ctx)
+	taker, err := s.takerQueue.Pop(ctx)
 	if errors.Cause(err) == ErrNoTakers {
 		return false, nil
 	}
@@ -83,7 +93,11 @@ func (s *Service) SendNextThanks(ctx context.Context) (ok bool, e error) {
 		return false, Fatal(errors.Wrap(err, "failed to pop taker"))
 	}
 
-	err = s.EmailService.SendEmail(EmailAddress{
+	/*
+		Name, address, subject and body shouldn't be hardcoded, but un-hardcoding the body would
+		normally require templates and maybe a store for these templates, so I'll just leave it as is.
+	*/
+	err = s.emailService.SendEmail(EmailAddress{
 		Name:    taker.Name,
 		Address: taker.ContactEmail,
 	}, EmailAddress{

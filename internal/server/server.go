@@ -10,9 +10,15 @@ import (
 )
 
 type Server struct {
-	UpdateInterval time.Duration
-	PollInterval   time.Duration
-	Service        *service.Service
+	Config
+	service *service.Service
+}
+
+func New(config Config, svc *service.Service) *Server {
+	return &Server{
+		Config:  config,
+		service: svc,
+	}
 }
 
 func (s *Server) loadTakers(ctx context.Context) error {
@@ -26,7 +32,7 @@ func (s *Server) loadTakers(ctx context.Context) error {
 		case <-ctx.Done():
 			return ctx.Err()
 		case <-ticker.C:
-			err := s.Service.LoadTakers(ctx)
+			err := s.service.LoadTakers(ctx)
 			if service.IsFatal(err) {
 				return err
 			}
@@ -38,12 +44,16 @@ func (s *Server) loadTakers(ctx context.Context) error {
 }
 
 func (s *Server) sendThanks(ctx context.Context) error {
+	const sendThanksTimeout = 3 * time.Second
+
 	for {
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
 		default:
-			ok, err := s.Service.SendNextThanks(ctx)
+			timeoutCtx, _ := context.WithTimeout(ctx, sendThanksTimeout)
+
+			ok, err := s.service.SendNextThanks(timeoutCtx)
 			if service.IsFatal(err) {
 				return err
 			}

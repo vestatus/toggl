@@ -25,13 +25,13 @@ import (
 )
 
 type Config struct {
-	Email             string        `envconfig:"EMAIL"`
-	Password          string        `envconfig:"PASSWORD"`
-	TakersAPI         string        `envconfig:"TAKERS_API"`
-	RedisAddr         string        `envconfig:"REDIS_ADDR"`
-	UpdateInterval    time.Duration `envconfig:"UPDATE_INTERVAL"`
-	QueuePollInterval time.Duration `envconfig:"QUEUE_POLL_INTERVAL"`
-	LogLevel          string        `envconfig:"LOG_LEVEL"`
+	Email     string `envconfig:"EMAIL"`
+	Password  string `envconfig:"PASSWORD"`
+	TakersAPI string `envconfig:"TAKERS_API"`
+	RedisAddr string `envconfig:"REDIS_ADDR"`
+	LogLevel  string `envconfig:"LOG_LEVEL"`
+
+	Server server.Config `envconfig:"SERVER"`
 }
 
 const maxGracePeriod = 6 * time.Second
@@ -112,21 +112,9 @@ func main() {
 	}
 
 	DB := db.NewRedis(redisClient)
+	svc := service.New(client, &email.LogSender{Log: log}, DB, DB)
 
-	svc := &service.Service{
-		TakerAPI: client,
-		EmailService: &email.LogSender{
-			Log: log,
-		},
-		TakerQueue: DB,
-		SentThanks: DB,
-	}
-
-	srv := server.Server{
-		UpdateInterval: config.UpdateInterval,
-		Service:        svc,
-		PollInterval:   config.QueuePollInterval,
-	}
+	srv := server.New(config.Server, svc)
 
 	ctx := logger.WithLogger(context.Background(), log)
 
