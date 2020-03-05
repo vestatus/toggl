@@ -74,18 +74,28 @@ func (c *Client) nextTakers(ctx context.Context, offset, limit int) (takers []ta
 }
 
 func (t *taker) toDomain() service.Taker {
+	email := t.ContactInfo.ContactEmail
+	if email == "" {
+		email = t.Email
+	}
+
+	name := t.ContactInfo.FullName
+	if name == "" {
+		name = t.Name
+	}
+
 	return service.Taker{
-		ID:           t.ID,
-		Name:         t.Name,
-		ContactEmail: t.ContactInfo.ContactEmail,
-		Points:       t.Points,
-		Percent:      t.Percent,
-		Demo:         t.IsDemo,
+		ID:      t.ID,
+		Name:    name,
+		Email:   email,
+		Points:  t.Points,
+		Percent: t.Percent,
+		Demo:    t.IsDemo,
 	}
 }
 
 func (c *Client) ListTakers(ctx context.Context) ([]service.Taker, error) {
-	const pageSize = 20
+	const pageSize = 10
 
 	total := pageSize
 

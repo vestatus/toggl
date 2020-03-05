@@ -99,7 +99,7 @@ func (s *Service) SendNextThanks(ctx context.Context) (ok bool, e error) {
 	*/
 	err = s.emailService.SendEmail(EmailAddress{
 		Name:    taker.Name,
-		Address: taker.ContactEmail,
+		Address: taker.Email,
 	}, EmailAddress{
 		Name:    "Toggl Hire",
 		Address: "hello@hire.toggl.com",
@@ -108,7 +108,7 @@ func (s *Service) SendNextThanks(ctx context.Context) (ok bool, e error) {
 		Body:    "Thank you for applying via Toggl Hire.",
 	})
 	if err != nil {
-		return false, Fatal(errors.Wrap(err, "failed to send email"))
+		return false, errors.Wrap(err, "failed to send email")
 	}
 
 	return true, nil

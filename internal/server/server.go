@@ -27,6 +27,8 @@ func (s *Server) loadTakers(ctx context.Context) error {
 	ticker := time.NewTicker(s.UpdateInterval)
 	defer ticker.Stop()
 
+	log := logger.FromContext(ctx)
+
 	for {
 		select {
 		case <-ctx.Done():
@@ -37,7 +39,7 @@ func (s *Server) loadTakers(ctx context.Context) error {
 				return err
 			}
 			if err != nil {
-				logger.FromContext(ctx).Infof("failed to load takers: %s", err)
+				log.WithError(err).Error("failed to load takers")
 			}
 		}
 	}
@@ -45,6 +47,7 @@ func (s *Server) loadTakers(ctx context.Context) error {
 
 func (s *Server) sendThanks(ctx context.Context) error {
 	const sendThanksTimeout = 3 * time.Second
+	log := logger.FromContext(ctx)
 
 	for {
 		select {
@@ -58,7 +61,7 @@ func (s *Server) sendThanks(ctx context.Context) error {
 				return err
 			}
 			if err != nil {
-				logger.FromContext(ctx).Infof("failed to send thanks: %s", err)
+				log.WithError(err).Error("failed to send thanks")
 				continue
 			}
 
