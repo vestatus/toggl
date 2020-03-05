@@ -23,10 +23,12 @@ import (
 )
 
 type Config struct {
-	Email     string `envconfig:"EMAIL"`
-	Password  string `envconfig:"PASSWORD"`
-	TakersAPI string `envconfig:"TAKERS_API"`
-	RedisAddr string `envconfig:"REDIS_ADDR"`
+	Email             string        `envconfig:"EMAIL"`
+	Password          string        `envconfig:"PASSWORD"`
+	TakersAPI         string        `envconfig:"TAKERS_API"`
+	RedisAddr         string        `envconfig:"REDIS_ADDR"`
+	UpdateInterval    time.Duration `envconfig:"UPDATE_INTERVAL"`
+	QueuePollInterval time.Duration `envconfig:"QUEUE_POLL_INTERVAL"`
 }
 
 const maxGracePeriod = 6 * time.Second
@@ -76,6 +78,10 @@ func main() {
 		Network: "tcp",
 		Addr:    config.RedisAddr,
 	})
+	if redisClient.Ping().Err() != nil {
+		log.Fatal("redis unavailable")
+	}
+
 	DB := db.NewRedis(redisClient)
 
 	svc := &service.Service{
@@ -86,9 +92,9 @@ func main() {
 	}
 
 	srv := server.Server{
-		UpdateInterval: 10 * time.Second,
+		UpdateInterval: config.UpdateInterval,
 		Service:        svc,
-		PollInterval:   5 * time.Second,
+		PollInterval:   config.QueuePollInterval,
 	}
 
 	eg, ctx := errgroup.WithContext(context.TODO())
