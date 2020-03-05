@@ -6,7 +6,8 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
-	"toggl/internal/service"
+
+	"github.com/vestatus/toggl/internal/service"
 
 	"github.com/pkg/errors"
 )

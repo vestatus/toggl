@@ -2,8 +2,9 @@ package email
 
 import (
 	"errors"
-	"toggl/internal/logger"
-	"toggl/internal/service"
+
+	"github.com/vestatus/toggl/internal/logger"
+	"github.com/vestatus/toggl/internal/service"
 )
 
 type LogSender struct {

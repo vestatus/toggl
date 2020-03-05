@@ -4,12 +4,13 @@ import (
 	"context"
 	"net/http"
 	"os"
-	"toggl/internal/email"
-	"toggl/internal/logger"
-	"toggl/internal/server"
-	"toggl/internal/service"
-	"toggl/internal/store"
-	"toggl/internal/takers"
+
+	"github.com/vestatus/toggl/internal/email"
+	"github.com/vestatus/toggl/internal/logger"
+	"github.com/vestatus/toggl/internal/server"
+	"github.com/vestatus/toggl/internal/service"
+	"github.com/vestatus/toggl/internal/store"
+	"github.com/vestatus/toggl/internal/takers"
 
 	"github.com/pkg/errors"
 

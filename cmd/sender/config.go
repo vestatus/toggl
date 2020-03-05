@@ -1,7 +1,7 @@
 package main
 
 import (
-	"toggl/internal/server"
+	"github.com/vestatus/toggl/internal/server"
 
 	"github.com/kelseyhightower/envconfig"
 )

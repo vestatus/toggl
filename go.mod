@@ -1,4 +1,4 @@
-module toggl
+module github.com/vestatus/toggl
 
 go 1.14
 

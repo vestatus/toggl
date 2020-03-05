@@ -2,7 +2,8 @@ package service
 
 import (
 	"context"
-	"toggl/internal/logger"
+
+	"github.com/vestatus/toggl/internal/logger"
 
 	"github.com/pkg/errors"
 )

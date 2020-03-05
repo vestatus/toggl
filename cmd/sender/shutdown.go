@@ -7,7 +7,8 @@ import (
 	"os/signal"
 	"syscall"
 	"time"
-	"toggl/internal/logger"
+
+	"github.com/vestatus/toggl/internal/logger"
 )
 
 const maxGracePeriod = 6 * time.Second

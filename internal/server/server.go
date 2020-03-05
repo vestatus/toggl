@@ -3,8 +3,9 @@ package server
 import (
 	"context"
 	"time"
-	"toggl/internal/logger"
-	"toggl/internal/service"
+
+	"github.com/vestatus/toggl/internal/logger"
+	"github.com/vestatus/toggl/internal/service"
 
 	"golang.org/x/sync/errgroup"
 )

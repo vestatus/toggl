@@ -9,7 +9,8 @@ import (
 	"net/url"
 	"path"
 	"sync"
-	"toggl/internal/logger"
+
+	"github.com/vestatus/toggl/internal/logger"
 
 	"github.com/sirupsen/logrus"
 

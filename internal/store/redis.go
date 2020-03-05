@@ -3,7 +3,8 @@ package store
 import (
 	"context"
 	"encoding/json"
-	"toggl/internal/service"
+
+	"github.com/vestatus/toggl/internal/service"
 
 	"github.com/go-redis/redis"
 	"github.com/pkg/errors"
