@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 	"os/signal"
@@ -11,9 +10,12 @@ import (
 	"time"
 	"toggl/internal/db"
 	"toggl/internal/email"
+	"toggl/internal/logger"
 	"toggl/internal/server"
 	"toggl/internal/service"
 	"toggl/internal/takers"
+
+	"github.com/sirupsen/logrus"
 
 	"github.com/go-redis/redis"
 
@@ -29,6 +31,7 @@ type Config struct {
 	RedisAddr         string        `envconfig:"REDIS_ADDR"`
 	UpdateInterval    time.Duration `envconfig:"UPDATE_INTERVAL"`
 	QueuePollInterval time.Duration `envconfig:"QUEUE_POLL_INTERVAL"`
+	LogLevel          string        `envconfig:"LOG_LEVEL"`
 }
 
 const maxGracePeriod = 6 * time.Second
@@ -53,7 +56,7 @@ func sigTrap(ctx context.Context) func() error {
 		case sig := <-trap:
 			// in case the service fails to kill itself
 			time.AfterFunc(maxGracePeriod, func() {
-				log.Fatal("service failed to shut down gracefully")
+				logger.FromContext(ctx).Fatal("service failed to shut down gracefully")
 			})
 
 			return errSignal{Signal: sig}
@@ -61,12 +64,38 @@ func sigTrap(ctx context.Context) func() error {
 	}
 }
 
-func main() {
+func loadConfig() (*Config, error) {
 	var config Config
 
 	err := envconfig.Process("sender", &config)
 	if err != nil {
+		return nil, err
+	}
+
+	return &config, nil
+}
+
+func main() {
+	const defaultLogLevel = logrus.InfoLevel
+
+	log := logrus.NewEntry(&logrus.Logger{
+		Out:       os.Stdout,
+		Formatter: &logrus.TextFormatter{},
+		Level:     defaultLogLevel,
+	})
+
+	config, err := loadConfig()
+	if err != nil {
 		log.Fatal(err)
+	}
+
+	level, err := logrus.ParseLevel(config.LogLevel)
+	if err != nil {
+		log.WithError(err).
+			WithField("default level", defaultLogLevel).
+			Error("failed to parse log level, using default")
+	} else {
+		log.Level = level
 	}
 
 	client, err := takers.NewClient(&http.Client{}, config.TakersAPI, config.Email, config.Password)
@@ -85,10 +114,12 @@ func main() {
 	DB := db.NewRedis(redisClient)
 
 	svc := &service.Service{
-		TakerAPI:     client,
-		EmailService: &email.LogSender{},
-		TakerQueue:   DB,
-		SentThanks:   DB,
+		TakerAPI: client,
+		EmailService: &email.LogSender{
+			Log: log,
+		},
+		TakerQueue: DB,
+		SentThanks: DB,
 	}
 
 	srv := server.Server{
@@ -97,14 +128,21 @@ func main() {
 		PollInterval:   config.QueuePollInterval,
 	}
 
-	eg, ctx := errgroup.WithContext(context.TODO())
+	ctx := logger.WithLogger(context.Background(), log)
+
+	log.Info("starting service")
+
+	eg, ctx := errgroup.WithContext(ctx)
 	eg.Go(func() error {
 		return srv.Run(ctx)
 	})
 	eg.Go(sigTrap(ctx))
 
 	err = eg.Wait()
-	if err != nil {
-		log.Fatal(err)
+	if sig, ok := err.(errSignal); ok {
+		log.WithField("signal", sig.Signal).Info("service terminated normally due to signal")
+		return
 	}
+
+	log.WithError(err).Error("service terminated with error")
 }

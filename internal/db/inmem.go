@@ -1,9 +1,10 @@
 package db
 
 import (
+	"context"
 	"errors"
-	"log"
 	"sync"
+	"toggl/internal/logger"
 	"toggl/internal/service"
 )
 
@@ -39,7 +40,7 @@ func NewInmem() *Inmem {
 	}
 }
 
-func (q *Inmem) Push(taker *service.Taker) error {
+func (q *Inmem) Push(ctx context.Context, taker *service.Taker) error {
 	if taker == nil {
 		return errors.New("taker is nil")
 	}
@@ -47,13 +48,13 @@ func (q *Inmem) Push(taker *service.Taker) error {
 	q.bufMu.Lock()
 	defer q.bufMu.Unlock()
 
-	log.Printf("push %#v", taker)
+	logger.FromContext(ctx).Debugf("push %#v", taker)
 
 	q.takers = append(q.takers, *taker)
 	return nil
 }
 
-func (q *Inmem) Pop() (*service.Taker, error) {
+func (q *Inmem) Pop(ctx context.Context) (*service.Taker, error) {
 	q.bufMu.Lock()
 	defer q.bufMu.Unlock()
 
@@ -64,7 +65,7 @@ func (q *Inmem) Pop() (*service.Taker, error) {
 	taker := &q.takers[0]
 	q.takers = q.takers[1:]
 
-	log.Printf("pop %#v", taker)
+	logger.FromContext(ctx).Debugf("pop %#v", taker)
 
 	return taker, nil
 }

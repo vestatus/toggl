@@ -5,11 +5,13 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"net/url"
 	"path"
 	"sync"
+	"toggl/internal/logger"
+
+	"github.com/sirupsen/logrus"
 
 	"github.com/pkg/errors"
 )
@@ -82,7 +84,11 @@ func (c *Client) doRequest(ctx context.Context, method string, pth string, query
 
 	c.signRequest(req)
 
-	log.Printf("%s %s %s", method, pth, query.Encode())
+	logger.FromContext(ctx).WithFields(logrus.Fields{
+		"method": method,
+		"path":   pth,
+		"query":  query.Encode(),
+	}).Debug("doing request")
 
 	resp, err := c.baseClient.Do(req)
 	if err != nil {

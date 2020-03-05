@@ -1,6 +1,7 @@
 package db
 
 import (
+	"context"
 	"encoding/json"
 	"toggl/internal/service"
 
@@ -21,17 +22,17 @@ func NewRedis(client *redis.Client) *Redis {
 	return &Redis{client: client}
 }
 
-func (r *Redis) Push(taker *service.Taker) error {
+func (r *Redis) Push(ctx context.Context, taker *service.Taker) error {
 	bts, err := json.Marshal(taker)
 	if err != nil {
 		return errors.Wrap(err, "failed to marshal taker")
 	}
 
-	return r.client.RPush(queueName, string(bts)).Err()
+	return r.client.WithContext(ctx).RPush(queueName, string(bts)).Err()
 }
 
-func (r *Redis) Pop() (*service.Taker, error) {
-	res, err := r.client.LPop(queueName).Result()
+func (r *Redis) Pop(ctx context.Context) (*service.Taker, error) {
+	res, err := r.client.WithContext(ctx).LPop(queueName).Result()
 	if err == redis.Nil {
 		return nil, service.ErrNoTakers
 	}
@@ -46,10 +47,10 @@ func (r *Redis) Pop() (*service.Taker, error) {
 	return &taker, nil
 }
 
-func (r *Redis) Add(id int) error {
-	return r.client.SAdd(setName, id).Err()
+func (r *Redis) Add(ctx context.Context, id int) error {
+	return r.client.WithContext(ctx).SAdd(setName, id).Err()
 }
 
-func (r *Redis) Contains(id int) (bool, error) {
-	return r.client.SIsMember(setName, id).Result()
+func (r *Redis) Contains(ctx context.Context, id int) (bool, error) {
+	return r.client.WithContext(ctx).SIsMember(setName, id).Result()
 }

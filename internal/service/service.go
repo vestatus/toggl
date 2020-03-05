@@ -2,7 +2,7 @@ package service
 
 import (
 	"context"
-	"log"
+	"toggl/internal/logger"
 
 	"github.com/pkg/errors"
 )
@@ -15,14 +15,14 @@ type TakerAPI interface {
 var ErrNoTakers = errors.New("no takers in queue")
 
 type TakerQueue interface {
-	Push(taker *Taker) error
+	Push(ctx context.Context, taker *Taker) error
 	// A TakerQueue should return ErrNoTakers if no takers are available
-	Pop() (*Taker, error)
+	Pop(ctx context.Context) (*Taker, error)
 }
 
 type IDSet interface {
-	Add(id int) error
-	Contains(id int) (bool, error)
+	Add(ctx context.Context, id int) error
+	Contains(ctx context.Context, id int) (bool, error)
 }
 
 type Service struct {
@@ -39,7 +39,7 @@ func shouldSendThanks(taker *Taker) bool {
 }
 
 func (s *Service) LoadTakers(ctx context.Context) error {
-	log.Print("loading new takers")
+	logger.FromContext(ctx).Info("loading new takers")
 
 	takers, err := s.TakerAPI.ListTakers(ctx)
 	if err != nil {
@@ -51,7 +51,7 @@ func (s *Service) LoadTakers(ctx context.Context) error {
 			continue
 		}
 
-		msgSent, err := s.SentThanks.Contains(takers[i].ID)
+		msgSent, err := s.SentThanks.Contains(ctx, takers[i].ID)
 		if err != nil {
 			return Fatal(errors.Wrap(err, "failed to check for id in set"))
 		}
@@ -60,12 +60,12 @@ func (s *Service) LoadTakers(ctx context.Context) error {
 			continue
 		}
 
-		err = s.TakerQueue.Push(&takers[i])
+		err = s.TakerQueue.Push(ctx, &takers[i])
 		if err != nil {
 			return Fatal(errors.Wrap(err, "failed to push taker to the queue"))
 		}
 
-		err = s.SentThanks.Add(takers[i].ID)
+		err = s.SentThanks.Add(ctx, takers[i].ID)
 		if err != nil {
 			return Fatal(errors.Wrap(err, "failed to add taker to the queue"))
 		}
@@ -74,8 +74,8 @@ func (s *Service) LoadTakers(ctx context.Context) error {
 	return nil
 }
 
-func (s *Service) SendNextThanks(_ context.Context) (ok bool, e error) {
-	taker, err := s.TakerQueue.Pop()
+func (s *Service) SendNextThanks(ctx context.Context) (ok bool, e error) {
+	taker, err := s.TakerQueue.Pop(ctx)
 	if errors.Cause(err) == ErrNoTakers {
 		return false, nil
 	}

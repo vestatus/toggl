@@ -2,8 +2,8 @@ package server
 
 import (
 	"context"
-	"log"
 	"time"
+	"toggl/internal/logger"
 	"toggl/internal/service"
 
 	"golang.org/x/sync/errgroup"
@@ -31,7 +31,7 @@ func (s *Server) loadTakers(ctx context.Context) error {
 				return err
 			}
 			if err != nil {
-				log.Printf("failed to load takers: %s", err)
+				logger.FromContext(ctx).Infof("failed to load takers: %s", err)
 			}
 		}
 	}
@@ -48,7 +48,7 @@ func (s *Server) sendThanks(ctx context.Context) error {
 				return err
 			}
 			if err != nil {
-				log.Printf("failed to send thanks: %s", err)
+				logger.FromContext(ctx).Infof("failed to send thanks: %s", err)
 				continue
 			}
 
@@ -56,7 +56,7 @@ func (s *Server) sendThanks(ctx context.Context) error {
 				continue
 			}
 
-			log.Printf("sender will sleep for %s", s.PollInterval.String())
+			logger.FromContext(ctx).Debugf("sender will sleep for %s", s.PollInterval.String())
 
 			select {
 			case <-ctx.Done():
