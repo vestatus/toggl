@@ -1,4 +1,4 @@
-package db
+package store
 
 import (
 	"context"
@@ -48,7 +48,18 @@ func (r *Redis) Pop(ctx context.Context) (*service.Taker, error) {
 }
 
 func (r *Redis) Add(ctx context.Context, id int) error {
-	return r.client.WithContext(ctx).SAdd(setName, id).Err()
+	const resultInserted = 1
+
+	res, err := r.client.WithContext(ctx).SAdd(setName, id).Result()
+	if err != nil {
+		return err
+	}
+
+	if res != resultInserted {
+		return errors.New("the set already contains this key")
+	}
+
+	return nil
 }
 
 func (r *Redis) Contains(ctx context.Context, id int) (bool, error) {

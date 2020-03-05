@@ -8,11 +8,11 @@ import (
 	"os/signal"
 	"syscall"
 	"time"
-	"toggl/internal/db"
 	"toggl/internal/email"
 	"toggl/internal/logger"
 	"toggl/internal/server"
 	"toggl/internal/service"
+	"toggl/internal/store"
 	"toggl/internal/takers"
 
 	"github.com/sirupsen/logrus"
@@ -117,7 +117,7 @@ func main() {
 		log.Fatal("redis unavailable")
 	}
 
-	DB := db.NewRedis(redisClient)
+	DB := store.NewRedis(redisClient)
 	svc := service.New(client, &email.LogSender{Log: log}, DB, DB)
 
 	srv := server.New(config.Server, svc)
